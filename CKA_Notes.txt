@@ -1,0 +1,621 @@
+PODS
+
+Basic POD Defination yaml file
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod (name of the pod)
+  labels:
+    type: frontend
+	env: production (Note: the labels can be anything like key value pair)
+spec:
+  containers:
+  - name: nginx-container (name of the container)
+    image: nginx
+
+kubectl run <podname> --image=<image name> = To create a container without yaml file
+
+kubectl run nginx-pod --image=nginx
+
+kubectl run nginx-pod --image=nginx --dry-run=client -o yaml = We will directly get the yaml defination file form this
+
+kubectl run nginx-pod --image=nginx --dry-run=client -o yaml > <file name> = We will directly get the yaml defination file form this ans we can save the file with the file name
+
+kubectl create -f <file name> = To create an object mentioned in the file
+
+kubectl get pods = To list the existing pods
+
+kubectl get pods -o wide = To list the pods with full details in CLI itself
+
+kubectl describe pod <podname> = To print the entire details of the pod like container details, event details and conditions
+
+kubectl replace --force -f <defination yaml file> = To delete and recreate the pods (This will be used for updating the pods)
+
+kubectl get pods --watch = It will be used for continuosly monitoring the status of the pods
+
+kubectl get pods --selector <name of the label> = Used to fileter out the pods
+
+kubectl logs pod <pod name> -n <namespace of the pod> = To check the logs of the pod
+
+REPLICASET
+
+Basic Replicaset Defination yaml file
+
+apiVersion: apps/v1
+kind: Replicaset
+metadata:
+  name: nginx-replicaset
+spec:
+  template:
+    metadata:
+	  name: nginx-pod1
+	  labels:
+	    type: frontend
+		env: qa
+	  spec:
+		container:
+		- name: nginx-container1
+		  image: nginx
+  replicas: 4
+  selector:
+    matchLabels:
+	  type: frontend
+	  env: qa
+
+kubectl get replicaset = To list the replicaset
+
+kubectl delete replicaset <replicaset name> = To delete the replicaset  Note: It also deletes underlying pods created by itself
+
+kubectl replace -f <replica set defination file name> = To replace the updated changes in the defination file
+
+kubectl scale --replicas=<no of replicas reqd> -f <replica set defination file name> = To scale the replicas without edit the changes in the defination file
+
+kubectl scale rs new-replica-set --replicas=5 = To scale up the replicas
+
+kubectl describe replicaset <replicaset name> = To get the full details about replicaset (Pod template and events)
+
+kubectl edit rs <replicaset name> = To edit the existing replicaset
+
+
+https://kubernetes.io/docs/reference/kubectl/conventions/
+
+
+DEPLOYMENTS
+
+
+Basic Deployment defination file
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+spec:
+  replicas: 3
+  template:
+    metadata:
+	  name: apline-pod
+	  labels:
+	    name: frontend-deployment
+	  spec:
+	    containers:
+		- name: apline-container
+		  image: apline:2.1 <change to required image name>
+  selector:
+    matchLabels:
+	  name:: frontend-deployment
+
+kubectl create deployment <deployment name> --image=<image name> --replicas=<no. of replicas> = To create deployment without creating yaml file.
+
+kubectl create deployment <deployment name> --image=<image name> --replicas=<no. of replicas> --dry-run -o yaml = To create the deployment yaml file from the CLI
+	 
+Note: When we create deployment, deployment will create replication replicaset then replicaset will create pods
+	  
+kubectl get all = To list all the details related to deployment
+
+
+SERVICES
+
+we have 3 types of services 
+
+Nodeport service (Range: 30000-32767)
+cluster IP
+Loadbalancer
+
+
+Basic service defination yaml (By default if you dont mention the type of service it will create cluster-ip service)
+
+NodePort defination yaml file
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-service
+spec:
+  type: NodePort
+  ports:
+  - targetPort: 80 (it refers to the pod in which application is running)
+    Port: 80 (this referes to service port, Its better to match targetport and port with same i.e is 80 in this case)
+	nodePort: 30009 (30000-32767) 
+  selector:
+    key: value (it refers labels in pod defination file) If any pod matches the label mentioned in the selector, the pod will come under the app-service 
+
+
+NOTE: the selector in the service defination yaml file targets the labels in the pod defination file. If any pod label will match to the selector mentioned in the service then 
+the pod will come under the service
+
+kubectl create service <service name> = To create service without yaml file
+kubectl describe service <service name> = To know the full details about the service
+kubectl delete service <service name> = To delete the service
+
+
+NAMESPACES
+
+Basic name space defination file
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: <name of the name space>
+  
+kubectl create -f <name of the namespace defination file> = To create a namespace from the defination file
+kubectl create namespace <name of the namespace> = To create a namespace from the CLI
+
+Basic Pod defination file with namespace mentioned
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: <pod name>
+  namespace: <name of the namespace>
+spec:
+  containers:
+    - name: <container name>
+      image: <image name>	
+
+kubectl create -f <pod defincation file> = To create pods as per the namespace mentioned in the pod defination file
+
+kubectl create -f <pod defination file> --namespace=<name of the namespace> = To create pods in a particular namespace without mentioning the namespace under metadata
+
+NOTE: whenever we are creating any resource in the cluster it will be created in default namespace. we can change the namespace by mentioning namespace: <name of the namespace> 
+under metadata in defination file.
+
+NOTE: The application running in one namespace can access the backend db running in another namespace  
+    "db.service.dev.svc.cluster.local"
+	
+	here db.service = name of the db in another namespace
+	dev = dev namespace
+	svc = service
+	cluster.local = domain
+
+kubectl get pods --namespace=<name of the name space> = To list the pods in a particular namespace
+
+kubectl config set-context $(kubectl config current-context) --namespace=<name of the namespace to swith> = To switch to the another namespace permanently 
+instead of using --namespace=<name of the namespace> always in CLI
+
+kubectl get pods --all-namespaces = To list all the pods available in all the namespaces
+kubectl get pods -A = To list all the pods available in all the namespaces
+
+we can limit the resources creating in the namespace by using resource quota
+
+Basic compute-quota yaml file
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: <name of the quota>
+  namespace: <name of the namespace>
+spec:
+  hard:
+    pods: "10"
+	requests.cpu: "4"
+	requests.memory: 5Gi
+	limits.cpu: "10"
+	limits.memory: 10Gi
+
+kubectl create -f <name of the resource quota file>
+
+NOTE: kubectl apply -f <path to the folder where the defination files exists> = To create all the defination files in that path
+
+	
+Imperative commands
+
+It will be useful in the exam to save the time
+	
+https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#-em-service-em-	
+https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands
+
+Labels and selectors
+
+it will be using to filter the pods based on the selectors. We can mention labels under metadata in pod defination file and these labels can be referred in selector in 
+replicaset/deployment/replication controller
+
+labels should be key and value pair.
+
+
+Manual scheduling
+
+We can manually schedule the pods by mentioning the nodeName in the pod defination file without depending on the scheduling
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: <pod name>
+  namespace: <name of the namespace>
+spec:
+  containers:
+    - name: <container name>
+      image: <image name>
+  nodeName: <name of the node>
+  
+
+Taints and Tolerations
+
+Taints are applied to nodes
+Tolerations are applied to pods
+
+The main use of taints and tolerations is to telling the node to not accept any pod which doesnt have tolerations
+
+kubectl taint nodes <node name> key=value:taint-effect
+
+We do have 3 effects
+NoSchedule= which means the scheduler will not schedule any pods on the particular node
+
+PreferNoSchedule = which means the scheduler will not schedule any pods on the particular nodes but we can guaranteed
+
+NoExecute = Which means the scheduler will not schedule the new pods, but the existing pods on the nodes will be evacuated
+
+kubectl taint nodes <node name> key=value:taint-effect- = To delete the taint on the node (NOTE: here added "-" at the end of the schedule to delete the taint)
+
+Basic tolerations pod defination file
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+spec:
+  containers:
+  - name: nginx-container
+    image: nginx
+  tolertations:
+  - key: "<it should be matched with the value mentioned in tainted node>"
+    value: "<it should be matched with the value mentioned in tainted node>"
+	operator: "equal"
+	effect: "NoSchedule/PreferNoSchedule/NoExecute"
+
+
+NODE SELECTOR
+
+By using this option we can schedule the pods on a particular node by using labes on nodes. Till now we have seen labels on pod. Now we will see labels on nodes
+
+To create a label on the node
+
+kubectl label nodes <node name> <label-key>=<label-value> 
+
+kubeclt label nodes node01 size=large
+
+This label we have to mention on the pod under spec
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+spec:
+  containers:
+  - name: nginx-container
+    image: nginx
+  nodeSelector:
+    size: large
+
+
+Now the pod will be created on the node which has label size:large key and value
+
+we have some limitations with the node selector we cant use more labels in the node say example we have 3 nodes and we labelled one as large, one as medium and one as small.
+we cant create pod which label has not large. we can't use expressions like or/add in this feature. To do that we have nodeaffinity feature
+
+
+NODEAFFINITY
+
+In this feature we can ask scheduler to schedule the pods as per the node affinity rules mentioned in the defination file.
+
+Basic node affinity pod defincation file
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+spec: 
+  contianers:
+  - name: nginx-container
+    image: nginx
+  affinity:
+    nodeAffinity:
+	  requiredDuringSchedulingIgnoredDuringExecution:
+	    nodeSelectorTerms:
+		- matchExpressions:
+		  - key: size
+		    operator: In
+			value:
+			- Large
+			- Medium
+
+As per the above node affinity rules mentioned in the pod defination file, we are asking scheduler to schedule the pod if node has a label matching the values 
+mentioned in the node affinity rules in pod defination files
+
+we do have 2 types of conditions:
+
+1. requiredDuringSchedulingIgnoredDuringExecution = It means the scheduler will only schedule the pods if the rules mentioned in the pod defination 
+file are matched with the labels mentioned in the node. If any existing pods are running in the node, it will continue
+
+2. preferredDuringSchedulingIgnoredDuringExecution = It means the scheduler will schedule the pods even if we are not mentioned the labels in the nodes. 
+It will not require the labels, the shceduler will prefer to match the pods with the rules mentioned in the pod defination file with the labels mentioned in the node. If the 
+scheduler doesnot find the nodes with out labels it will schedule the pod in any available node. If any existing pods are running in the node, it will continue
+
+3. reuiredDuringSchedulingRequiredDuringExection = It means that the scheduler requires the labels mentioned in the pod defination file, then only it will schedule the pods in 
+the nodes matching the node labels orelse the pods will be in pending state. Coming to existing pods running in the node, those pods also should match the node labels as per the 
+the affinity rules mentioned in the pod defination file orelase it will be terminated or evacuated 
+
+
+RESOURCES REQUIREMENTS AND LIMITS
+
+apiVersion: v1
+kind: Pod
+metadata:
+  nginx-pod
+spec:
+  containers:
+  - name: nginx-cont
+    image: nginx
+  resources: 
+    requests:
+      memory: "1Gi"
+      cpu: 1
+	limits:
+	  memory: "2Gi"
+	  cpu: 2
+	  
+the above resource requests and limits are only set to containers only
+
+https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/
+
+https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/cpu-default-namespace/
+
+https://kubernetes.io/docs/tasks/configure-pod-container/assign-memory-resource
+
+
+DAEMONSETS
+
+basic demonset defination yaml file
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata: 
+  name: anyname
+spec: 
+  template:
+    metadata:
+	name: nginx-pod
+	labels:
+	  key: value
+  selector:
+    matchLabels:
+      key: value
+  spec:	  
+    containers:
+    - name: <cont-name>
+      image: <imagename>
+
+	NOTE: we can see that we have not mentioned replicas in the daemon set defination file. as it schedule pod in every node in the cluster. id node deletes pod will be deleted.
+some example of that pod is monitoring and log collecting pods.
+
+kubectl get daemonsets
+
+kubectl describe daemonset <daemonset name>
+
+
+STATIC PODS
+
+When we dont have scheduler and api server still we can create pods called static pods by saving the yaml files in the directory mentioned in the kubelet-config file
+
+cd /var/lib/kubelet/config.yaml in which we can find the path with the name called staticPodPath 
+
+
+MULTIPLE-SCHEDULER
+
+We can use our custom created scheduler to schedule the pods in cluster
+we are deploying the additional scheduler as a pod in the cluster
+
+Basic pod defination file to creata a scheduler 
+
+apiVersion: v1
+kind: Pod
+metadata:
+  additional-schedular-pod
+spec:
+  containers:
+  - command:
+    - kube-scheduler
+	- --address=127.0.0.1
+	- --kubeconfig=/etc/kubernetes/scheduler.config
+	- --config=/etc/kubernetes/my-scheduler-conf.yaml (we need to create a seperate config file from the default scheduler config file then need to changes as per our need)
+	
+	image: <image name of the scheduler>
+	name: kube-scheduler
+	
+basic kubernetes scheduler defination yaml file
+apiVersion: kubescheduler.config.k8s.io/v1
+kind: KubeSchedulerConfiguration
+profiles:
+  - schedulerName: multipoint-scheduler
+leaderElection: 
+  leaderElect: true
+  resourceNamespace: kube-system
+  
+  
+basic pod defination file with using custom scheduler 
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  schedulerName: my-scheduler
+  containers:
+  - image: nginx
+    name: nginx
+
+kubectl get events -o wide = To check the events generated in the namespace
+
+kubectl create configmap <configmap name> --from-file=<path of the file> -n <namespace name>
+
+
+
+References for multipe schedulers
+
+https://github.com/kubernetes/community/blob/master/contributors/devel/sig-scheduling/scheduling_code_hierarchy_overview.md
+
+https://kubernetes.io/blog/2017/03/advanced-scheduling-in-kubernetes/
+
+https://jvns.ca/blog/2017/07/27/how-does-the-kubernetes-scheduler-work/
+
+https://stackoverflow.com/questions/28857993/how-does-kubernetes-scheduler-work
+
+
+LOGGIN & MONITORING
+
+we do have different monitoring tools to monitor the kubernetes cluster i.e metrix server. prometheus, datadog, dynatrace
+
+minikube addons enable metrics-server = To enable the metrix server in minikube cluster
+
+To install metrics in the kubeadm cluster, go through the git hub and download all the files and create those in the pods
+
+clusterrole.rbac.authorization.k8s.io/system:aggregated-metrics-reader created
+clusterrolebinding.rbac.authorization.k8s.io/metrics-server:system:auth-delegator created
+rolebinding.rbac.authorization.k8s.io/metrics-server-auth-reader created
+apiservice.apiregistration.k8s.io/v1beta1.metrics.k8s.io created
+serviceaccount/metrics-server created
+deployment.apps/metrics-server created
+service/metrics-server created
+clusterrole.rbac.authorization.k8s.io/system:metrics-server created
+clusterrolebinding.rbac.authorization.k8s.io/system:metrics-server created
+
+kubectl top node = To check the  metrics of the node
+kubectl top pod = To check the metrics of the pod
+
+
+APPLICATION-LOGS
+
+docker logs -f <container id> = To check the live logs of the container
+
+kubectl logs -f <pod name> = To check the live logs of the pod
+
+If multiple containers are running in  a pod
+
+Kubectl logs -f <pod name> <container name> = To check the live logs of a container running inside the pod
+
+
+ROLLOUT 
+
+kubectl rollout status deployment <deployment name> = To check the deployment rollout status
+
+kubectl rollout history deployment <deployment name> = To check the history of the deployment rollout
+
+types of deployement strategy
+
+recreate starategy = Where are the existing pods will be terminated then only new pods will be created. With this strategy users may face downtime of the application
+
+Rolling update = where one pod is terminated and new pod will be created with the updated version, with this strategy user wont face downtime. This is the default strategy
+
+Suppose if we want to update our image version, we can mention the same in our deployment defination file and apply the changes with kubectl create -f <file name> to make the changes
+
+kubectl set image deployment <deployment name> <container name>:<updated image name with version> = This is also another way to roolout the updates 
+
+we can watch the difference between recreate and rollout updates by using kubectl describe deployment <deployment name> 
+
+In recreate update all the existing pods are scaled down and the new pods will be scaled up wheras in rollout deployment one pod will scale down then new pod will scale up 
+
+While doing any update, existing replicaset will be terminated and new replicaset will be created
+
+kubectl rollout undo deployment <deployment name> = To undo the latest version, this means the new replicaset created will be destroyed and old replicaset will be up with the old verison
+
+
+kubectl create -f <deployment defination file> = To create a new deployment
+
+kubectl get deployments = To list the deployments
+
+kubectl apply -f <updated deployment defination file> = To deploy the updated deployment as per the changes in the defination file
+
+kubectl set image deployment <deployment name> <container name>:<updated image name with version> = To update the image version without touching the deployment defination file
+
+kubectl rollout status deployment <deployment name> = To check the status of the deployment
+
+kubectl rollout history deployment <deployment name> = To check the history of the deployment
+
+kubectl rollout updo deployement <deployment name> = To undo the rollout updates
+
+
+for i in {1..35}; do
+   kubectl exec --namespace=kube-public curl -- sh -c 'test=`wget -qO- -T 2  http://webapp-service.default.svc.cluster.local:8080/info 2>&1` && echo "$test OK" || echo "Failed"';
+   echo ""
+done
+
+While changing the strategy type form rollingupdate to recreate make sure to remove the rolling update settings form the yaml file
+
+
+COMMANDS AND ARGUMENTS
+
+In docker we can override the CMD(command) from the command line but we cannot overwrite the entrypoint
+
+docker run <container name> sleep 10
+
+here sleep is the entrypoint and 10 is the CMD that we can change from the command line like docker run <container name> 20. Everytime we dont need to mention the entrypoint. But if we 
+want to change the entrypoint like docker run <container name> sleep2.0 10 
+
+likewise in kubernetes we do have commands and arguments 
+
+Docker   			Kubernetes
+Entrypoint 			Command
+Command 			Args
+
+
+BAsic pod defination file with commands and ards
+
+apiVersion: v1
+kind: Pod
+metadata: 
+  name: <name of the pod>
+spec: 
+  containers:
+  -  name: <name of the container>
+     image: <image name>
+     command: [ "name of the command1", "name of the command2" ] i.e entrypoint in docker
+	 args: [ "name of the argument1", "name of the arguement 2" ] i.e command in docker
+
+example of the pod defination file with commands
+
+apiVersion: v1
+kind: Pod 
+metadata:
+  name: ubuntu-sleeper-2
+spec:
+  containers:
+  - name: ubuntu
+    image: ubuntu
+    command:
+      - "sleep"
+      - "5000"
+	 
+Pod defination file with args  
+apiVersion: v1
+kind: Pod
+metadata: 
+  name: webapp-green
+spec: 
+  containers:
+  - name: anycont
+    image: kodekloud/webapp-color
+    args:
+      - "color"
+      - "green"
